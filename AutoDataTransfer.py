@@ -11,7 +11,8 @@ spin = SpinCursor(msg="Ожидайте выполнения программы"
                   animType='sticks')
 
 def get_file_names():
-    print('AutoDataTransfer by Friskes. v1.4\n')
+    print('AutoDataTransfer by Friskes. v1.5\n')
+    print('Данная программа предназначена для автоматического переноса таких столбцов как:\n"Проектный забой", "Текущий забой" и "Состояние" из файла бурения в файл сводки.\n')
     print('Сначало выберите путь к файлу бурения.')
     print('Затем выберите путь к файлу сводки.\n')
     input('Нажмите ENTER для запуска программы.\n')
@@ -53,6 +54,7 @@ def parse_and_make_dict(filePath):
     book = openpyxl.open(filePath, read_only=True)
     sheet = book.worksheets[0]
 
+    proect_zaboi = {}
     zaboi = {}
     sostoyanie = {}
 
@@ -76,25 +78,22 @@ def parse_and_make_dict(filePath):
                 if s5 != None and s6 != None:
                     # print(row, s3, s5, s6)
 
-                    s25 = sheet[row][25-1].value
-                    s27 = sheet[row][27-1].value
+                    s12 = sheet[row][12-1].value # столбец 'Проект. забой'
+                    s25 = sheet[row][25-1].value # столбец 'забой'
+                    s27 = sheet[row][27-1].value # столбец 'СОСТОЯНИЕ'
 
                     # в качестве ключей используем склееные строки 'М/Р' и '№ КУСТ'
-                    zaboi[str(s5) + str (s6)] = s25
-                    sostoyanie[str(s5) + str (s6)] = s27
+                    proect_zaboi[str(s5) + str(s6)] = s12
+                    zaboi[str(s5) + str(s6)] = s25
+                    sostoyanie[str(s5) + str(s6)] = s27
 
-                    # print('zaboi:', str(s5) + str (s6), s25)
-                    # print('sostoyanie:', str(s5) + str (s6), s27)
     spin.stop()
     spin.join() # подождём полного завершения работы модуля анимации
 
-    return zaboi, sostoyanie
-
-# print('zaboi:', zaboi)
-# print('sostoyanie:', sostoyanie)
+    return proect_zaboi, zaboi, sostoyanie
 
 
-def write_xlsx_file(filePath2, zaboi, sostoyanie):
+def write_xlsx_file(filePath2, proect_zaboi, zaboi, sostoyanie):
     print('—'*99)
     print()
 
@@ -102,7 +101,6 @@ def write_xlsx_file(filePath2, zaboi, sostoyanie):
     sheet = book.worksheets[0]
 
     for row in range(1, sheet.max_row + 1):
-    # for row in range(1, 150):
 
         s4 = sheet[row][4-1].value
         s5 = sheet[row][5-1].value
@@ -111,6 +109,17 @@ def write_xlsx_file(filePath2, zaboi, sostoyanie):
 
             sostoyanie_key = str(s4).lower() + str(s5).lower()
             sostoyanie_key = sostoyanie_key.translate(str.maketrans('', '', punctuation + ' '))
+
+            for k, val in proect_zaboi.items():
+
+                k = k.lower()
+                k = k.translate(str.maketrans('', '', punctuation + ' '))
+
+                if k == sostoyanie_key:
+                    # print(k, str(s4) + str(s5))
+                    if val != sheet[row][12-1].value:
+                        print(f'По ключу "{k}" в проектный забой записываю "{val}" вместо "{sheet[row][12-1].value}"')
+                        sheet[row][12-1].value = val
 
             for k, val in zaboi.items():
 
@@ -147,8 +156,8 @@ def main():
     filePath, filePath2 = get_file_names()
     if filePath == None or filePath2 == None:
         return
-    zaboi, sostoyanie = parse_and_make_dict(filePath)
-    write_xlsx_file(filePath2, zaboi, sostoyanie)
+    proect_zaboi, zaboi, sostoyanie = parse_and_make_dict(filePath)
+    write_xlsx_file(filePath2, proect_zaboi, zaboi, sostoyanie)
 
 if __name__ == '__main__':
     main()
